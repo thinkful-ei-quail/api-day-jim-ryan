@@ -2,6 +2,8 @@ import $ from 'jquery';
 
 import store from './store';
 
+import api from './api';
+
 const generateItemElement = function (item) {
   let itemTitle = `<span class="shopping-item shopping-item__checked">${item.name}</span>`;
   if (!item.checked) {
@@ -50,8 +52,21 @@ const handleNewItemSubmit = function () {
     event.preventDefault();
     const newItemName = $('.js-shopping-list-entry').val();
     $('.js-shopping-list-entry').val('');
-    store.addItem(newItemName);
-    render();
+
+    api.createItem(newItemName)
+      .then (res => {
+        if(res.ok){
+          return res.json();
+        } 
+        throw new TypeError('error: cannot add empty items');
+      })
+      .then((newItem) => {
+        store.addItem(newItem);
+        render();
+      })
+      .catch(error => {
+        console.log(error.message);
+      });
   });
 };
 
@@ -67,9 +82,21 @@ const handleDeleteItemClicked = function () {
     // get the index of the item in store.items
     const id = getItemIdFromElement(event.currentTarget);
     // delete the item
-    store.findAndDelete(id);
-    // render the updated shopping list
-    render();
+    api.deleteItem(id)
+      .then(res => {
+        if(res.ok){
+          return res.json();
+        }
+        throw new TypeError('error: unable to delete item');
+      })
+      .then(()=>{
+        store.findAndDelete(id);
+        // render the updated shopping list
+        render();
+      })
+      .catch(error => {
+        console.log(error.message);
+      });
   });
 };
 
@@ -78,16 +105,47 @@ const handleEditShoppingItemSubmit = function () {
     event.preventDefault();
     const id = getItemIdFromElement(event.currentTarget);
     const itemName = $(event.currentTarget).find('.shopping-item').val();
-    store.findAndUpdateName(id, itemName);
-    render();
+    
+    
+    //store.findAndUpdateName(id, itemName);
+    api.updateItem(id, {name: itemName})
+      .then(res => {
+        if(res.ok){
+          return res.json();
+        }
+        throw new TypeError('error: unable to update item');
+      })
+      .then(()=>{
+        store.findAndUpdate(id, {name: itemName});
+        render();
+      })
+      .catch(error => {
+        console.log(error.message);
+      });
   });
 };
 
 const handleItemCheckClicked = function () {
   $('.js-shopping-list').on('click', '.js-item-toggle', event => {
     const id = getItemIdFromElement(event.currentTarget);
-    store.findAndToggleChecked(id);
-    render();
+    //store.findAndToggleChecked(id);
+    let item = store.findById(id);
+
+    let checkStatus = !item.checked;
+    api.updateItem(id, {checked: checkStatus})
+      .then(res => {
+        if(res.ok){
+          return res.json();
+        }
+        throw new TypeError('error: unable to update item');
+      })
+      .then(()=>{
+        store.findAndUpdate(id, {checked: checkStatus});
+        render();
+      })
+      .catch(error => {
+        console.log(error.message);
+      });
   });
 };
 
